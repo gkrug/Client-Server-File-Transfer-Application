@@ -42,6 +42,7 @@ int main(int argc, char* argv[])
 	time_t rawtime;
 	FILE *fp2;
 	unsigned char symlink[100];
+	char fname[40];
 	
 	/* ENSURE PROPER ARGUMENT STRUCTURE */
 	if (argc == 2)
@@ -109,7 +110,7 @@ int main(int argc, char* argv[])
 			{
 				break;
 			}
-			if (strcpy(buf, "REQ")) {
+			if (strcmp(buf, "REQ") == 0) {
 				//send(new_s, "go", 3, 0);
 				bzero((char*)&buf, sizeof(buf));
 //printf("size of buf is %d\n", strlen(buf));
@@ -182,10 +183,33 @@ int main(int argc, char* argv[])
         			}
 				} 
 				}// end REQ if
-				else if (strcmp(command, "DEL")) {
-					
-				}
-				else if (strcmp(command, "XIT")) {
+				// delete command
+				else if (strcmp(buf, "DEL") == 0) {
+					int fexists;
+					if ((len=recv(new_s, buf, sizeof(buf), 0)) == -1) {
+					perror("Server Receiving Error!\n");
+					exit(1);
+				} 
+				buf[strlen(buf) - 1] = '\0';
+				strcpy(fname, buf);
+				fp = fopen(buf, "r");
+				// check if file exists
+				if (fp == NULL) 
+					 fexists = 0;
+				else
+					 fexists = 1;
+				// send whether the file exists or not
+				send(new_s, &fexists, 4, 0);
+	
+				// receive confirmation of delete
+				bzero((char *)&buf, sizeof(buf));
+				recv(new_s, buf, sizeof(buf), 0);
+				
+				if (!strcmp(buf, "Yes")) {
+					remove(fname);
+				} 
+
+				} else if (strcmp(buf, "XIT") == 0) {
 					break;
 				}
 				else {

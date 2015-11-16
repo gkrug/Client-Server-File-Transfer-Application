@@ -97,9 +97,12 @@ int main(int argc, char * argv[])
 	// Set len to the length of the *file name* and send
 	//len = strlen(argv[3]) + 1;
 	while (1) {
+		bzero((char*)&buf, sizeof(buf));
+		bzero((char*)&command, sizeof(command));
 		printf("Please enter command--REQ, UPL, LIS, DEL, XIT: ");
 		fgets(command, 50, stdin);
-		if (strcmp, "REQ") {
+		command[strlen(command) - 1] = '\0';
+		if (strcmp(command, "REQ") == 0) {
 		if (send(s,command,strlen(command) + 1,0)==-1)
 		{
 			perror("client send error!");
@@ -107,8 +110,7 @@ int main(int argc, char * argv[])
 		}
 		//char *t;
 		//recv(s, t, 3, 0); 
-		bzero((char*)&buf, sizeof(buf));
-		printf("Enter name of file to send to server: ");
+		printf("Enter name of file to upload from server: ");
 		fgets(buf, 50, stdin);
 		// send name of file to server
 		if (send(s, buf, strlen(buf) + 1, 0) == -1) {
@@ -116,7 +118,7 @@ int main(int argc, char * argv[])
 			exit(1);
 		}
 						buf[strlen(buf) - 1] = '\0';
-				printf("buf is %s\n",buf);
+			//	printf("buf is %s\n",buf);
 		// Receive the size
 		recv(s,length,sizeof(length), 0);
 	
@@ -203,6 +205,45 @@ int main(int argc, char * argv[])
 	fsize = (double) length[0]/1000000;		// Size in Mb
 	throughput = fsize/rtt;						// Throughput 
 	printf("%d bytes transferred in %lf seconds.\nThroughput: %lf Megabytes/sec.\nFile MD5sum: %s\n", length[0], rtt, throughput, hash);
+	} else if (strcmp(command, "DEL") == 0) {
+		int fexists;
+		if (send(s,command,strlen(command) + 1,0)==-1)
+		{
+			perror("client send error!");
+			exit (1);
+		}
+		printf("Enter name of file to delete: ");
+		fgets(buf, 40, stdin);
+		
+		// send name of file to server
+		if (send(s, buf, strlen(buf) + 1, 0) == -1) {
+			perror("client send error!");
+			exit(1);
+		}
+		buf[strlen(buf) - 1] = '\0';
+		printf("buf to delete is %s\n", buf);
+		recv(s, &fexists, 4, 0);
+		if (fexists) {
+			while (1) {
+				printf("'Yes' to delete, 'No' to ignore. ");
+				bzero((char*)&buf, sizeof(buf));
+				fgets(buf, sizeof(buf), stdin);
+				if (!strcmp(buf, "Yes")) {
+					send(s, buf, strlen(buf) + 1, 0);
+					break;
+				} else if (!strcmp(buf, "No")) {
+					send(s, buf, strlen(buf) + 1, 0);
+					break;
+				} else {
+					continue;
+				}
+			}
+		} else {
+			printf("The file does not exist on the server\n");
+			continue;
+		}
+	} else if (strcmp(command, "XIT") == 0) {
+			break;
 	} else {
 		printf("Not a valid command!\n");
 		continue;
