@@ -37,13 +37,20 @@ int main(int argc, char* argv[])
         unsigned char buffer;
         unsigned char *hash;
         unsigned char send_hash[256];
+	char hashrcv[40];
 	char packet[100];
         int length = 0;
 	time_t rawtime;
 	FILE *fp2;
 	unsigned char symlink[100];
 	char fname[40];
-	
+	int length_s[2];
+	char file_c[10000000];
+	struct tm * timeinfo;
+	struct timeval tb, ta;
+	int leng = 0;
+	double rtt, fsize, throughput;
+	unsigned char *computedHash;
 	/* ENSURE PROPER ARGUMENT STRUCTURE */
 	if (argc == 2)
 	{
@@ -120,10 +127,10 @@ int main(int argc, char* argv[])
 				} 
 				buf[strlen(buf) - 1] = '\0';
 				// concat with path to test files
-				//bzero((char*)&symlink, sizeof(symlink));
-				//strcpy(symlink,"Prog3TestFiles/");
-				//strcat(symlink,buf);
-				//strcpy(buf, symlink);
+				bzero((char*)&symlink, sizeof(symlink));
+				strcpy(symlink,"Prog3TestFiles/");
+				strcat(symlink,buf);
+				strcpy(buf, symlink);
 
 				/* OPEN FILE FROM FILE NAME SENT TO SERVER */
 				fp = fopen(buf, "r");
@@ -205,11 +212,142 @@ int main(int argc, char* argv[])
 				bzero((char *)&buf, sizeof(buf));
 				recv(new_s, buf, sizeof(buf), 0);
 				
-				if (!strcmp(buf, "Yes") {
+				if (!strcmp(buf, "Yes")) {
 					remove(fname);
 				} 
 
-				} else if (strcmp(buf, "XIT") == 0) {
+				} else if (!strcmp(buf, "UPL")) {
+            // ************** UPLOAD ****************
+				int ack;
+
+				bzero((char*)&buf, sizeof(buf));
+//printf("size of buf is %d\n", strlen(buf));
+				if ((len=recv(new_s, buf, sizeof(buf), 0)) == -1) {
+					perror("Server Receiving Error!\n");
+					exit(1);
+				} 
+				//buf[strlen(buf) - 1] = '\0';
+				printf("ack check %s\n", buf);
+				fp = fopen(buf, "r");
+				if (fp != NULL) {
+					printf("server already has file--ack 0 to upload request\n");
+					ack = 0;
+					break;
+				} else {
+					ack = 1;
+				}
+						printf("acknowledged\n");
+				// send ack
+				send(new_s, &ack, 4, 0);
+			
+				// receive size of file
+				recv(new_s, length_s, sizeof(length_s), 0);
+				printf("size of file is %d\n", length_s[0]);
+				// receive hash
+				recv(new_s, hashrcv, 33, 0);	
+				printf("hash is %s\n", hashrcv);		
+			fp = fopen(buf, "w");			// open requested file to write
+				printf("OPENED: %s\n", buf);
+      			if (fp == NULL)
+      			{
+						printf("fp is null\n");
+      				exit(1);
+      			}
+
+		// prepare to receive blocks from the file
+		// set remain_data = size of the file
+	   	int remain_data = length_s[0];
+			int datarcv = 5000;
+		
+			// if file size is less than default receiving block size
+			// set equal to size
+			if (remain_data < datarcv) {
+				datarcv = remain_data;
+			}
+
+			// get time of day before file is received
+			gettimeofday(&tb, NULL);
+
+			// receive file from server
+				bzero((char*)&file_c, sizeof(file_c));
+				printf("boutta receive file\n");
+      		while (recv(new_s, file_c, datarcv, 0) > 0 && (remain_data > 0))
+      			{
+                	fwrite(file_c, sizeof(char), datarcv, fp);
+						bzero((char*)&file_c, sizeof(file_c));
+                	remain_data -= datarcv;
+			if (remain_data < datarcv) {
+				datarcv = remain_data;
+			}
+			if (remain_data <= 0) break;
+      		}
+			printf("file received\n");
+		gettimeofday(&ta, NULL); // time of day after
+
+		int fileSize;
+		rewind(fp);
+		fclose(fp);
+		printf("fp2 botta open %s\n", buf);
+		// open file received	
+		fp2 = fopen(buf, "r");
+		if (fp2 == NULL) {
+			printf("fp2 is null\n");
+			exit(1);	
+		}
+		
+		// Compute hash
+				printf("compute hash\n");
+				bzero((char*)&buffer, sizeof(buffer));
+				bzero((char*)&computedHash, sizeof(computedHash));
+				bzero((char*)&send_hash, sizeof(send_hash));
+      		td = mhash_init(MHASH_MD5);
+      		if (td == MHASH_FAILED) exit(1);
+     	 	while (fread(&buffer, 1, 1, fp2) == 1) {
+      			mhash(td, &buffer, 1);
+      		}
+
+      		computedHash = mhash_end(td);
+				leng = 0;
+      		// Fill in computed hash into send_hash
+				printf("fill computed hash\n");
+      		for (i = 0; i < mhash_get_block_size(MHASH_MD5); i++) {
+            		leng += sprintf(send_hash+leng,"%.2x", computedHash[i]);
+      		}
+		printf("comparing hashes\n");
+
+		// If the hashes do not match exit
+		if ( strcmp(send_hash, hashrcv) != 0) {
+			perror("The hash Received does not match the computed hash!\n");
+			exit(1);
+		}
+		printf("computing rtt\n");
+		// Compute Round trip time
+		rtt = ((ta.tv_sec - tb.tv_sec)*1000000L +ta.tv_usec) -tb.tv_usec; 
+		rtt /= 1000000;
+	
+	
+	fsize = (double) length_s[0]/1000000;		// Size in Mb
+	throughput = fsize/rtt;						// Throughput 
+	printf("%d bytes transferred in %lf seconds.\nThroughput: %lf Megabytes/sec.\nFile MD5sum: %s\n", length_s[0], rtt, throughput, hashrcv);
+
+
+				// ************* UPLOAD *****************
+				} else if (strcmp(buf, "LIS") == 0)
+			{
+				DIR *dirp; 
+				struct dirent *dp;
+				char contents[30];
+				dirp = opendir(".");
+				while((dp = readdir(dirp)) != NULL) 
+				{
+                               		sprintf(contents, dp->d_name);
+					printf("%s\n", contents);
+			        	send(new_s, contents,30, 0);
+           			}
+				strcpy(contents, "end");
+				send(new_s, contents, sizeof(contents), 0);
+				closedir(dirp);
+			}else if (strcmp(buf, "XIT") == 0) {
 					break;
 				}
 				else {

@@ -21,6 +21,7 @@
 #include <time.h>
 #include <sys/time.h>
 #include <mhash.h>
+#include <sys/stat.h>
 #define MAX_LINE 256
 
 int main(int argc, char * argv[])
@@ -30,11 +31,12 @@ int main(int argc, char * argv[])
 	struct hostent *hp;
 	struct sockaddr_in sin;
 	char *host; 
-	char hash[MAX_LINE];
+	char hashrcv[MAX_LINE];
 	char command[10];
 	char file_c[10000000];
 	char buf[MAX_LINE];
-	int length[1];
+	int length_s[1];
+	int length;
 	int s;
 	int port;
 	int len;
@@ -48,6 +50,7 @@ int main(int argc, char * argv[])
 	int fd;
 	unsigned char buffer;
 	unsigned char *computedHash;
+	unsigned char *hash;
 	unsigned char send_hash[4096];
 	int leng = 0;
 	int i;
@@ -120,10 +123,10 @@ int main(int argc, char * argv[])
 						buf[strlen(buf) - 1] = '\0';
 			//	printf("buf is %s\n",buf);
 		// Receive the size
-		recv(s,length,sizeof(length), 0);
+		recv(s,length_s,sizeof(length_s), 0);
 	
 		// if -1, file doesn't exist and exit
-		if (length[0] == -1)
+		if (length_s[0] == -1)
 		{
 			perror("File does not exist\n");
 			exit(1);
@@ -132,7 +135,7 @@ int main(int argc, char * argv[])
 		// File exists=>Receive file hash from server
 		else
 		{
-			recv(s, hash, 33, 0);			
+			recv(s, hashrcv, 33, 0);			
 			fp = fopen(buf, "w");			// open requested file to write
       			if (fp == NULL)
       			{
@@ -141,7 +144,7 @@ int main(int argc, char * argv[])
 		
 		// prepare to receive blocks from the file
 		// set remain_data = size of the file
-	   	int remain_data = length[0];
+	   	int remain_data = length_s[0];
 			int datarcv = 5000;
 		
 			// if file size is less than default receiving block size
@@ -192,7 +195,7 @@ int main(int argc, char * argv[])
       		}
 					
 		// If the hashes do not match exit
-		if ( strcmp(send_hash, hash) != 0) {
+		if ( strcmp(send_hash, hashrcv) != 0) {
 			perror("The hash Received does not match the computed hash!\n");
 			exit(1);
 		}
@@ -202,9 +205,9 @@ int main(int argc, char * argv[])
 		rtt /= 1000000;
 	}
 	
-	fsize = (double) length[0]/1000000;		// Size in Mb
+	fsize = (double) length_s[0]/1000000;		// Size in Mb
 	throughput = fsize/rtt;						// Throughput 
-	printf("%d bytes transferred in %lf seconds.\nThroughput: %lf Megabytes/sec.\nFile MD5sum: %s\n", length[0], rtt, throughput, hash);
+	printf("%d bytes transferred in %lf seconds.\nThroughput: %lf Megabytes/sec.\nFile MD5sum: %s\n", length_s[0], rtt, throughput, hash);
 	} else if (strcmp(command, "DEL") == 0) {
 		int fexists;
 		if (send(s,command,strlen(command) + 1,0)==-1)
@@ -243,7 +246,113 @@ int main(int argc, char * argv[])
 			printf("The file does not exist on the server\n");
 			continue;
 		}
-	} else if (strcmp(command, "XIT") == 0) {
+	} else if (!strcmp(command, "UPL")) {
+		// ********* UPlOAD ****************
+		int ack;
+		if (send(s,command,strlen(command) + 1,0)==-1)
+		{
+			perror("client send error!");
+			exit (1);
+		}
+		while (1) {
+			printf("Enter name of file to upload to server: ");
+			fgets(buf, 40, stdin);
+			buf[strlen(buf) - 1] = '\0';
+			
+			fp = fopen(buf, "r");
+			if (fp != NULL) {
+				printf("file dne fp %s\n", buf);
+				break;
+			}
+		}
+
+	
+		// send name of file to server
+		if (send(s, buf, strlen(buf) + 1, 0) == -1) {
+			perror("client send error!");
+			exit(1);
+		}
+		// receive acknowledgement
+		recv(s, &ack, 4, 0);
+	
+		// break if acknowledge is 0
+		if (!ack) {
+			printf("not acknowledged\n");
+			break;
+		}
+		printf("acknowledged\n");
+		// COMPUTE AND SEND FILE SIZE 
+					int ex[1];
+					//fseek(fp, 0L, SEEK_END);
+					//ex[0] = ftell(fp);	
+					struct stat st;
+					stat(buf, &st);
+					int sz = st.st_size;
+					ex[0] = sz;
+					char *file_c = malloc( ex[0] + 4096 );
+					send(s,ex,sizeof(ex),0);
+				
+					// CALCULATE AND SEND MD5 HASH 
+					fp2 = fopen(buf, "r");
+					if (fp2 == NULL ) {
+							printf("fp2 is NULL: \n", buf);
+					}
+        			td = mhash_init(MHASH_MD5);
+        			if (td == MHASH_FAILED) exit(1);
+        			while (fread(&buffer, 1, 1, fp2) == 1) {
+                			mhash(td, &buffer, 1);
+        			}
+        			hash = mhash_end(td);
+				bzero((char*)&send_hash, sizeof(send_hash));
+				length = 0;
+        			for (i = 0; i < mhash_get_block_size(MHASH_MD5); i++) {
+               				length += sprintf(send_hash+length,"%.2x", hash[i]);
+        			}
+				printf("SENDING HASH: %s\n", send_hash);
+				send(s, send_hash, strlen(send_hash)+1, 0);
+		
+				// READ CONTENTS OF FILE //		
+				rewind(fp);	
+				fread(file_c, 1, ex[0], fp);		
+				printf("size is %d\n", ex[0]);	
+
+				// SEND FILE TO CLIENT /
+		  		int offset = 0;
+		  		int sent_bytes = 5000;
+        			int remain_data = ex[0];
+				if (remain_data < sent_bytes) {		// send as one packet
+					sent_bytes = remain_data;
+				}
+        			while (((send(s, file_c + offset,sent_bytes,0)) > 0) && (remain_data > 0))
+        			{
+                			remain_data -= sent_bytes;
+                			offset += sent_bytes;	// keeping track of sent and remaining data
+						if (remain_data < sent_bytes) {
+							sent_bytes = remain_data;
+						}	
+        			}		
+		
+
+ 		// ********* UPLOAD ****************
+	} else if (strcmp(command, "LIS") == 0)
+		{
+			char files[30];
+                        if (send(s,command,strlen(command) + 1,0)==-1)
+                        {
+                                perror("client send error!");
+                                exit (1);
+                        }
+			while (recv(s, files, sizeof(files), 0) > 0)
+			{
+				if (strcmp(files, "end") != 0)
+				{
+					printf("%s\n",files);
+		//			bzero((char*)files, sizeof(files));
+				}
+				else
+					break;
+			}	
+		} else if (strcmp(command, "XIT") == 0) {
 			break;
 	} else {
 		printf("Not a valid command!\n");
