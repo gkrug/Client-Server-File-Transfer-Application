@@ -182,6 +182,12 @@ int main(int argc, char* argv[])
         			}
 				} 
 				}// end REQ if
+				else if (strcmp(command, "DEL")) {
+					
+				}
+				else if (strcmp(command, "XIT")) {
+					break;
+				}
 				else {
 					printf("not a valid command!\n");
 				}
