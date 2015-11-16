@@ -1,7 +1,7 @@
 all: client
 
 client: tcpclient.c
-	gcc tcpclient.c -o client -lmhash
+	gcc tcpclient.c -o myftp -lmhash
 
 clean:
-	rm client *.txt *.pdf *.mp4
+	rm myftp *.txt *.pdf *.mp4

@@ -172,7 +172,7 @@ int main(int argc, char* argv[])
 				/* READ CONTENTS OF FILE */		
 				rewind(fp);	
 				fread(file_c, 1, ex[0], fp);		
-				printf("size is %d\n", ex[0]);	
+				//printf("size is %d\n", ex[0]);	
 
 				/* SEND FILE TO CLIENT */
 		  		int offset = 0;
@@ -228,7 +228,7 @@ int main(int argc, char* argv[])
 					exit(1);
 				} 
 				//buf[strlen(buf) - 1] = '\0';
-				printf("ack check %s\n", buf);
+				//printf("ack check %s\n", buf);
 				fp = fopen(buf, "r");
 				if (fp != NULL) {
 					printf("server already has file--ack 0 to upload request\n");
@@ -237,18 +237,18 @@ int main(int argc, char* argv[])
 				} else {
 					ack = 1;
 				}
-						printf("acknowledged\n");
+						
 				// send ack
 				send(new_s, &ack, 4, 0);
 			
 				// receive size of file
 				recv(new_s, length_s, sizeof(length_s), 0);
-				printf("size of file is %d\n", length_s[0]);
+				//printf("size of file is %d\n", length_s[0]);
 				// receive hash
 				recv(new_s, hashrcv, 33, 0);	
-				printf("hash is %s\n", hashrcv);		
+				//printf("hash is %s\n", hashrcv);		
 			fp = fopen(buf, "w");			// open requested file to write
-				printf("OPENED: %s\n", buf);
+				//printf("OPENED: %s\n", buf);
       			if (fp == NULL)
       			{
 						printf("fp is null\n");
@@ -271,7 +271,7 @@ int main(int argc, char* argv[])
 
 			// receive file from server
 				bzero((char*)&file_c, sizeof(file_c));
-				printf("boutta receive file\n");
+				//printf("boutta receive file\n");
       		while (recv(new_s, file_c, datarcv, 0) > 0 && (remain_data > 0))
       			{
                 	fwrite(file_c, sizeof(char), datarcv, fp);
@@ -282,13 +282,13 @@ int main(int argc, char* argv[])
 			}
 			if (remain_data <= 0) break;
       		}
-			printf("file received\n");
+			//printf("file received\n");
 		gettimeofday(&ta, NULL); // time of day after
 
 		int fileSize;
 		rewind(fp);
 		fclose(fp);
-		printf("fp2 botta open %s\n", buf);
+		//printf("fp2 botta open %s\n", buf);
 		// open file received	
 		fp2 = fopen(buf, "r");
 		if (fp2 == NULL) {
@@ -297,7 +297,7 @@ int main(int argc, char* argv[])
 		}
 		
 		// Compute hash
-				printf("compute hash\n");
+				//printf("compute hash\n");
 				bzero((char*)&buffer, sizeof(buffer));
 				bzero((char*)&computedHash, sizeof(computedHash));
 				bzero((char*)&send_hash, sizeof(send_hash));
@@ -310,18 +310,18 @@ int main(int argc, char* argv[])
       		computedHash = mhash_end(td);
 				leng = 0;
       		// Fill in computed hash into send_hash
-				printf("fill computed hash\n");
+				//printf("fill computed hash\n");
       		for (i = 0; i < mhash_get_block_size(MHASH_MD5); i++) {
             		leng += sprintf(send_hash+leng,"%.2x", computedHash[i]);
       		}
-		printf("comparing hashes\n");
+		//printf("comparing hashes\n");
 
 		// If the hashes do not match exit
 		if ( strcmp(send_hash, hashrcv) != 0) {
 			perror("The hash Received does not match the computed hash!\n");
 			exit(1);
 		}
-		printf("computing rtt\n");
+		//printf("computing rtt\n");
 		// Compute Round trip time
 		rtt = ((ta.tv_sec - tb.tv_sec)*1000000L +ta.tv_usec) -tb.tv_usec; 
 		rtt /= 1000000;

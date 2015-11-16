@@ -207,7 +207,7 @@ int main(int argc, char * argv[])
 	
 	fsize = (double) length_s[0]/1000000;		// Size in Mb
 	throughput = fsize/rtt;						// Throughput 
-	printf("%d bytes transferred in %lf seconds.\nThroughput: %lf Megabytes/sec.\nFile MD5sum: %s\n", length_s[0], rtt, throughput, hash);
+	printf("%d bytes transferred in %lf seconds.\nThroughput: %lf Megabytes/sec.\nFile MD5sum: %s\n", length_s[0], rtt, throughput, hashrcv);
 	} else if (strcmp(command, "DEL") == 0) {
 		int fexists;
 		if (send(s,command,strlen(command) + 1,0)==-1)
@@ -280,7 +280,7 @@ int main(int argc, char * argv[])
 			printf("not acknowledged\n");
 			break;
 		}
-		printf("acknowledged\n");
+		
 		// COMPUTE AND SEND FILE SIZE 
 					int ex[1];
 					//fseek(fp, 0L, SEEK_END);
@@ -308,13 +308,13 @@ int main(int argc, char * argv[])
         			for (i = 0; i < mhash_get_block_size(MHASH_MD5); i++) {
                				length += sprintf(send_hash+length,"%.2x", hash[i]);
         			}
-				printf("SENDING HASH: %s\n", send_hash);
+				//printf("SENDING HASH: %s\n", send_hash);
 				send(s, send_hash, strlen(send_hash)+1, 0);
 		
 				// READ CONTENTS OF FILE //		
 				rewind(fp);	
 				fread(file_c, 1, ex[0], fp);		
-				printf("size is %d\n", ex[0]);	
+				//printf("size is %d\n", ex[0]);	
 
 				// SEND FILE TO CLIENT /
 		  		int offset = 0;

@@ -207,7 +207,7 @@ int main(int argc, char * argv[])
 	
 	fsize = (double) length_s[0]/1000000;		// Size in Mb
 	throughput = fsize/rtt;						// Throughput 
-	printf("%d bytes transferred in %lf seconds.\nThroughput: %lf Megabytes/sec.\nFile MD5sum: %s\n", length_s[0], rtt, throughput, hash);
+	printf("%d bytes transferred in %lf seconds.\nThroughput: %lf Megabytes/sec.\nFile MD5sum: %s\n", length_s[0], rtt, throughput, hashrcv);
 	} else if (strcmp(command, "DEL") == 0) {
 		int fexists;
 		if (send(s,command,strlen(command) + 1,0)==-1)
@@ -334,22 +334,25 @@ int main(int argc, char * argv[])
 		
 
  		// ********* UPLOAD ****************
-	} else if (strcmp(buf, "LIS") == 0)
+	} else if (strcmp(command, "LIS") == 0)
+		{
+			char files[30];
+                        if (send(s,command,strlen(command) + 1,0)==-1)
+                        {
+                                perror("client send error!");
+                                exit (1);
+                        }
+			while (recv(s, files, sizeof(files), 0) > 0)
 			{
-				DIR *dirp; 
-				struct dirent *dp;
-				char contents[30];
-				dirp = opendir(".");
-				while((dp = readdir(dirp)) != NULL) 
+				if (strcmp(files, "end") != 0)
 				{
-                               		sprintf(contents, dp->d_name);
-					printf("%s\n", contents);
-			        	send(new_s, contents,30, 0);
-           			}
-				strcpy(contents, "end");
-				send(new_s, contents, sizeof(contents), 0);
-				closedir(dirp);
-			}else if (strcmp(command, "XIT") == 0) {
+					printf("%s\n",files);
+		//			bzero((char*)files, sizeof(files));
+				}
+				else
+					break;
+			}	
+		} else if (strcmp(command, "XIT") == 0) {
 			break;
 	} else {
 		printf("Not a valid command!\n");

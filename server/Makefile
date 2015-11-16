@@ -1,7 +1,7 @@
 all: server
 
 server: tcpserver.c
-	gcc tcpserver.c -o server -lmhash
+	gcc tcpserver.c -o myftpd -lmhash
 
 clean:
-	rm server
+	rm myftpd
