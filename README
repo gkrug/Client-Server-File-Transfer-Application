@@ -1,0 +1,14 @@
+Nick Pellegrino && George Krug
+npelleg1 && gkrug
+CSE 30264
+Programming Assignment 3 
+README
+
+In the server directory
+- tcpserver.c
+- Makefile
+- Prog3TestFiles (symbolic link to Test File dropbox)
+
+In the client directory
+- tcpclient.c
+- Makefile
