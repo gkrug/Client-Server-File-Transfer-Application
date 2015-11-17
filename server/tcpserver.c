@@ -223,9 +223,8 @@ int main(int argc, char* argv[])
 				} 
 				fp = fopen(buf, "r");
 				if (fp != NULL) {
-					printf("server already has file--ack 0 to upload request\n");
 					ack = 0;
-					break;
+					continue;
 				} else {
 					ack = 1;
 				}
@@ -319,7 +318,7 @@ int main(int argc, char* argv[])
 				fsize = (double) length_s[0]/1000000;		// Size in Mb
 				throughput = fsize/rtt;				// Throughput
 				char results[300]; 
-				sprintf(results,"%d bytes transferred in %lf seconds.\nThroughput: %lf Megabytes/sec.\nFile MD5sum: %s\n", length_s[0], rtt, throughput, hashrcv);
+				sprintf(results,"%d bytes transferred in %lf seconds.\nThroughput: %lf Megabytes/sec.\nFile MD5sum: %s", length_s[0], rtt, throughput, hashrcv);
 				send(new_s, results, 300, 0);
 			} else if (strcmp(buf, "LIS") == 0)
 			{
@@ -330,7 +329,6 @@ int main(int argc, char* argv[])
 				while((dp = readdir(dirp)) != NULL) 
 				{
                                		sprintf(contents, dp->d_name);
-					printf("%s\n", contents);
 			        	send(new_s, contents,30, 0);
            			}
 				strcpy(contents, "end");
