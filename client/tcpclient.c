@@ -222,7 +222,7 @@ int main(int argc, char * argv[])
 				exit(1);
 			}
 			buf[strlen(buf) - 1] = '\0';
-			printf("buf to delete is %s\n", buf);
+			//printf("buf to delete is %s\n", buf);
 			recv(s, &fexists, 4, 0);
 			if (fexists) {
 				while (1) {
@@ -259,7 +259,6 @@ int main(int argc, char * argv[])
 			
 				fp = fopen(buf, "r");
 				if (fp != NULL) {
-					printf("file dne fp %s\n", buf);
 					break;
 				}
 			}
@@ -275,8 +274,8 @@ int main(int argc, char * argv[])
 	
 			// break if acknowledge is 0
 			if (!ack) {
-				printf("not acknowledged\n");
-				break;
+				printf("Server acknowledges 0 because it already has the file\n");
+				continue;
 			}
 		
 			// COMPUTE AND SEND FILE SIZE 
@@ -344,7 +343,7 @@ int main(int argc, char * argv[])
 			{
 				if (strcmp(files, "end") != 0)
 				{
-					printf("%s",files);
+					printf("%s\n",files);
 		//			bzero((char*)files, sizeof(files));
 				}
 				else
