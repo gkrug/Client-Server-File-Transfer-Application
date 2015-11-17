@@ -1,7 +1,7 @@
 Nick Pellegrino && George Krug
 npelleg1 && gkrug
 CSE 30264
-Programming Assignment 3 
+Programming Assignment 4
 README
 
 In the server directory
@@ -12,3 +12,40 @@ In the server directory
 In the client directory
 - tcpclient.c
 - Makefile
+
+
+Server Side:
+./myftp student03.cse.nd.edu 41009
+Please enter command--REQ, UPL, LIS, DEL, XIT: REQ
+Enter name of file to download from server: SmallFile.txt
+1628 bytes transferred in 0.010040 seconds.
+Throughput: 0.162151 Megabytes/sec.
+File MD5sum: cce1eeca0c6801e28426e1e3e187c2a7
+Please enter command--REQ, UPL, LIS, DEL, XIT: LIS
+.
+..
+Makefile
+tcpserver.c~
+tcpserver.c
+myftpd
+Prog3TestFiles
+Please enter command--REQ, UPL, LIS, DEL, XIT: UPL
+Enter name of file to upload to server: SmallFile.txt
+1628 bytes transferred in 0.009781 seconds.
+Throughput: 0.166445 Megabytes/sec.
+File MD5sum: cce1eeca0c6801e28426e1e3e187c2a7
+Please enter command--REQ, UPL, LIS, DEL, XIT: LIS
+.
+..
+Makefile
+tcpserver.c~
+tcpserver.c
+myftpd
+SmallFile.txt
+Prog3TestFiles
+Please enter command--REQ, UPL, LIS, DEL, XIT: DEL           
+Enter name of file to delete: SmallFile.txt
+'Yes' to delete, 'No' to ignore. Yes
+Please enter command--REQ, UPL, LIS, DEL, XIT: XIT
+Session closed
+
