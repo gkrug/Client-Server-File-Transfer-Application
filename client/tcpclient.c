@@ -127,7 +127,7 @@ int main(int argc, char * argv[])
 			if (length_s[0] == -1)
 			{
 				perror("File does not exist\n");
-				exit(1);
+				continue;
 			}
 	
 			// File exists=>Receive file hash from server
@@ -314,7 +314,7 @@ int main(int argc, char * argv[])
 			fread(file_c, 1, ex[0], fp);		
 			//printf("size is %d\n", ex[0]);	
 
-			// SEND FILE TO CLIENT /
+			// SEND FILE TO SERVER /
 	 		int offset = 0;
 		  	int sent_bytes = 5000;
         		int remain_data = ex[0];
@@ -328,7 +328,10 @@ int main(int argc, char * argv[])
 					if (remain_data < sent_bytes) {
 						sent_bytes = remain_data;
 					}	
-        		}		
+        		}
+			char results[200];
+			recv(s, results, 200, 0);
+			printf("%s\n", results);		
 		} else if (strcmp(command, "LIS") == 0)
 		{
 			char files[30];
@@ -341,7 +344,7 @@ int main(int argc, char * argv[])
 			{
 				if (strcmp(files, "end") != 0)
 				{
-					printf("%s\n",files);
+					printf("%s",files);
 		//			bzero((char*)files, sizeof(files));
 				}
 				else
