@@ -2,12 +2,12 @@
  * Nick Pellegrino && George Krug
  * npelleg1 && gkrug
  * CSE 30264
- * Programming Assignment 3
+ * Programming Assignment 4
  * tcpserver.c
- * This code is a TCP server that uses a port number as input to run the server,
- * and then the server receives a file name from the client, sends back the size
- * of the file (if it exists), sends the MD5 hash of the file, and then sends
- * the file itself
+ * This code is a TCP server designed for the client for this assignment.
+ * It supports uploads, downloads, listing server contents, removing files
+ * requested by the client, and remianing active for other clients once one
+ * exits
  */
 
 #include <stdio.h>
@@ -52,6 +52,7 @@ int main(int argc, char* argv[])
 	int leng = 0;
 	double rtt, fsize, throughput;
 	unsigned char *computedHash;
+	
 	/* ENSURE PROPER ARGUMENT STRUCTURE */
 	if (argc == 2)
 	{
@@ -119,14 +120,13 @@ int main(int argc, char* argv[])
 				break;
 			}
 			if (strcmp(buf, "REQ") == 0) {
-				//send(new_s, "go", 3, 0);
 				bzero((char*)&buf, sizeof(buf));
-//printf("size of buf is %d\n", strlen(buf));
 				if ((len=recv(new_s, buf, sizeof(buf), 0)) == -1) {
 					perror("Server Receiving Error!\n");
 					exit(1);
 				} 
 				buf[strlen(buf) - 1] = '\0';
+
 				// concat with path to test files
 				bzero((char*)&symlink, sizeof(symlink));
 				strcpy(symlink,"Prog3TestFiles/");
@@ -144,9 +144,7 @@ int main(int argc, char* argv[])
 				else
 				{
 					/* COMPUTE AND SEND FILE SIZE */
-					int ex[1];
-					//fseek(fp, 0L, SEEK_END);
-					//ex[0] = ftell(fp);	
+					int ex[1];	
 					struct stat st;
 					stat(buf, &st);
 					int sz = st.st_size;
@@ -156,45 +154,44 @@ int main(int argc, char* argv[])
 
 					/* CALCULATE AND SEND MD5 HASH */
 					fp2 = fopen(buf, "r");
-        			td = mhash_init(MHASH_MD5);
-        			if (td == MHASH_FAILED) exit(1);
-        			while (fread(&buffer, 1, 1, fp2) == 1) {
-                			mhash(td, &buffer, 1);
-        			}
-        			hash = mhash_end(td);
-				bzero((char*)&send_hash, sizeof(send_hash));
-				length = 0;
-        			for (i = 0; i < mhash_get_block_size(MHASH_MD5); i++) {
-               				length += sprintf(send_hash+length,"%.2x", hash[i]);
-        			}
-				send(new_s, send_hash, strlen(send_hash)+1, 0);
+        				td = mhash_init(MHASH_MD5);
+        				if (td == MHASH_FAILED) exit(1);
+        				while (fread(&buffer, 1, 1, fp2) == 1) {
+                				mhash(td, &buffer, 1);
+        				}
+        				hash = mhash_end(td);
+					bzero((char*)&send_hash, sizeof(send_hash));
+					length = 0;
+        				for (i = 0; i < mhash_get_block_size(MHASH_MD5); i++) {
+               					length += sprintf(send_hash+length,"%.2x", hash[i]);
+        				}
+					send(new_s, send_hash, strlen(send_hash)+1, 0);
 		
-				/* READ CONTENTS OF FILE */		
-				rewind(fp);	
-				fread(file_c, 1, ex[0], fp);		
-				//printf("size is %d\n", ex[0]);	
+					/* READ CONTENTS OF FILE */		
+					rewind(fp);	
+					fread(file_c, 1, ex[0], fp);			
 
-				/* SEND FILE TO CLIENT */
-		  		int offset = 0;
-		  		int sent_bytes = 5000;
-        			int remain_data = ex[0];
-				if (remain_data < sent_bytes) {		// send as one packet
-					sent_bytes = remain_data;
-				}
-        			while (((send(new_s, file_c + offset,sent_bytes,0)) > 0) && (remain_data > 0))
-        			{
-                			remain_data -= sent_bytes;
-                			offset += sent_bytes;	// keeping track of sent and remaining data
-						if (remain_data < sent_bytes) {
-							sent_bytes = remain_data;
-						}	
-        			}
+					/* SEND FILE TO CLIENT */
+		  			int offset = 0;
+		  			int sent_bytes = 5000;
+        				int remain_data = ex[0];
+					if (remain_data < sent_bytes) {		// send as one packet
+						sent_bytes = remain_data;
+					}
+        				while (((send(new_s, file_c + offset,sent_bytes,0)) > 0) && (remain_data > 0))
+        				{
+                				remain_data -= sent_bytes;
+                				offset += sent_bytes;	// keeping track of sent and remaining data
+							if (remain_data < sent_bytes) {
+								sent_bytes = remain_data;
+							}	
+        				}
 				} 
-				}// end REQ if
-				// delete command
-				else if (strcmp(buf, "DEL") == 0) {
-					int fexists;
-					if ((len=recv(new_s, buf, sizeof(buf), 0)) == -1) {
+			}// end REQ if
+			// delete command
+			else if (strcmp(buf, "DEL") == 0) {
+				int fexists;
+				if ((len=recv(new_s, buf, sizeof(buf), 0)) == -1) {
 					perror("Server Receiving Error!\n");
 					exit(1);
 				} 
@@ -217,12 +214,11 @@ int main(int argc, char* argv[])
 					remove(fname);
 				} 
 
-				} else if (!strcmp(buf, "UPL")) {
-            // ************** UPLOAD ****************
+			} else if (!strcmp(buf, "UPL")) {
 				int ack;
 
 				bzero((char*)&buf, sizeof(buf));
-//printf("size of buf is %d\n", strlen(buf));
+				//printf("size of buf is %d\n", strlen(buf));
 				if ((len=recv(new_s, buf, sizeof(buf), 0)) == -1) {
 					perror("Server Receiving Error!\n");
 					exit(1);
@@ -247,93 +243,88 @@ int main(int argc, char* argv[])
 				// receive hash
 				recv(new_s, hashrcv, 33, 0);	
 				//printf("hash is %s\n", hashrcv);		
-			fp = fopen(buf, "w");			// open requested file to write
+				fp = fopen(buf, "w");			// open requested file to write
 				//printf("OPENED: %s\n", buf);
-      			if (fp == NULL)
-      			{
-						printf("fp is null\n");
-      				exit(1);
-      			}
+      				if (fp == NULL)
+      				{
+					printf("fp is null\n");
+      					exit(1);
+      				}
 
-		// prepare to receive blocks from the file
-		// set remain_data = size of the file
-	   	int remain_data = length_s[0];
-			int datarcv = 5000;
+				// prepare to receive blocks from the file
+				// set remain_data = size of the file
+	   			int remain_data = length_s[0];
+				int datarcv = 5000;
 		
-			// if file size is less than default receiving block size
-			// set equal to size
-			if (remain_data < datarcv) {
-				datarcv = remain_data;
-			}
+				// if file size is less than default receiving block size
+				// set equal to size
+				if (remain_data < datarcv) {
+					datarcv = remain_data;
+				}
 
-			// get time of day before file is received
-			gettimeofday(&tb, NULL);
+				// get time of day before file is received
+				gettimeofday(&tb, NULL);
 
-			// receive file from server
+				// receive file from server
 				bzero((char*)&file_c, sizeof(file_c));
 				//printf("boutta receive file\n");
-      		while (recv(new_s, file_c, datarcv, 0) > 0 && (remain_data > 0))
-      			{
-                	fwrite(file_c, sizeof(char), datarcv, fp);
-						bzero((char*)&file_c, sizeof(file_c));
-                	remain_data -= datarcv;
-			if (remain_data < datarcv) {
-				datarcv = remain_data;
-			}
-			if (remain_data <= 0) break;
-      		}
-			//printf("file received\n");
-		gettimeofday(&ta, NULL); // time of day after
+      				while (recv(new_s, file_c, datarcv, 0) > 0 && (remain_data > 0))
+      				{
+        	        		fwrite(file_c, sizeof(char), datarcv, fp);
+					bzero((char*)&file_c, sizeof(file_c));
+	                		remain_data -= datarcv;
+					if (remain_data < datarcv) {
+						datarcv = remain_data;
+					}
+					if (remain_data <= 0) break;
+      				}
+				//printf("file received\n");
+				gettimeofday(&ta, NULL); // time of day after
 
-		int fileSize;
-		rewind(fp);
-		fclose(fp);
-		//printf("fp2 botta open %s\n", buf);
-		// open file received	
-		fp2 = fopen(buf, "r");
-		if (fp2 == NULL) {
-			printf("fp2 is null\n");
-			exit(1);	
-		}
+				int fileSize;
+				rewind(fp);
+				fclose(fp);
+				//printf("fp2 botta open %s\n", buf);
+				// open file received	
+				fp2 = fopen(buf, "r");
+				if (fp2 == NULL) {
+					printf("fp2 is null\n");
+					exit(1);	
+				}
 		
-		// Compute hash
+				// Compute hash
 				//printf("compute hash\n");
 				bzero((char*)&buffer, sizeof(buffer));
 				bzero((char*)&computedHash, sizeof(computedHash));
 				bzero((char*)&send_hash, sizeof(send_hash));
-      		td = mhash_init(MHASH_MD5);
-      		if (td == MHASH_FAILED) exit(1);
-     	 	while (fread(&buffer, 1, 1, fp2) == 1) {
-      			mhash(td, &buffer, 1);
-      		}
+      				td = mhash_init(MHASH_MD5);
+      				if (td == MHASH_FAILED) exit(1);
+     	 			while (fread(&buffer, 1, 1, fp2) == 1) {
+      					mhash(td, &buffer, 1);
+      				}
 
-      		computedHash = mhash_end(td);
+   	   			computedHash = mhash_end(td);
 				leng = 0;
-      		// Fill in computed hash into send_hash
+      				// Fill in computed hash into send_hash
 				//printf("fill computed hash\n");
-      		for (i = 0; i < mhash_get_block_size(MHASH_MD5); i++) {
-            		leng += sprintf(send_hash+leng,"%.2x", computedHash[i]);
-      		}
-		//printf("comparing hashes\n");
+      				for (i = 0; i < mhash_get_block_size(MHASH_MD5); i++) {
+            				leng += sprintf(send_hash+leng,"%.2x", computedHash[i]);
+      				}
+				//printf("comparing hashes\n");
 
-		// If the hashes do not match exit
-		if ( strcmp(send_hash, hashrcv) != 0) {
-			perror("The hash Received does not match the computed hash!\n");
-			exit(1);
-		}
-		//printf("computing rtt\n");
-		// Compute Round trip time
-		rtt = ((ta.tv_sec - tb.tv_sec)*1000000L +ta.tv_usec) -tb.tv_usec; 
-		rtt /= 1000000;
-	
-	
-	fsize = (double) length_s[0]/1000000;		// Size in Mb
-	throughput = fsize/rtt;						// Throughput 
-	printf("%d bytes transferred in %lf seconds.\nThroughput: %lf Megabytes/sec.\nFile MD5sum: %s\n", length_s[0], rtt, throughput, hashrcv);
-
-
-				// ************* UPLOAD *****************
-				} else if (strcmp(buf, "LIS") == 0)
+				// If the hashes do not match exit
+				if ( strcmp(send_hash, hashrcv) != 0) {
+					perror("The hash Received does not match the computed hash!\n");
+					exit(1);
+				}
+				//printf("computing rtt\n");
+				// Compute Round trip time
+				rtt = ((ta.tv_sec - tb.tv_sec)*1000000L +ta.tv_usec) -tb.tv_usec; 
+				rtt /= 1000000;
+				fsize = (double) length_s[0]/1000000;		// Size in Mb
+				throughput = fsize/rtt;						// Throughput 
+				printf("%d bytes transferred in %lf seconds.\nThroughput: %lf Megabytes/sec.\nFile MD5sum: %s\n", length_s[0], rtt, throughput, hashrcv);
+			} else if (strcmp(buf, "LIS") == 0)
 			{
 				DIR *dirp; 
 				struct dirent *dp;
@@ -349,11 +340,11 @@ int main(int argc, char* argv[])
 				send(new_s, contents, sizeof(contents), 0);
 				closedir(dirp);
 			}else if (strcmp(buf, "XIT") == 0) {
-					break;
-				}
-				else {
-					printf("not a valid command!\n");
-				}
+				break;
+			}
+			else {
+				printf("not a valid command!\n");
+			}
 						
 		}
 		close(new_s);
